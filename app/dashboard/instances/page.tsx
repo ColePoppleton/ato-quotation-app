@@ -6,6 +6,7 @@ import Trainer from "@/models/Trainer";
 import Link from "next/link";
 import AutoQuoteButton from "@/components/AutoQuoteButton";
 import { cn } from "@/lib/utils";
+import DeleteButton from "@/components/DeleteButton";
 
 export default async function InstancesPage() {
     await auth();
@@ -73,6 +74,7 @@ export default async function InstancesPage() {
                                 Manage Roster
                             </Link>
                             <AutoQuoteButton instanceId={instance._id.toString()} />
+                            <DeleteButton endpoint={`/api/course-instances/${instance._id}`} />
                         </div>
                     </div>
                 ))}

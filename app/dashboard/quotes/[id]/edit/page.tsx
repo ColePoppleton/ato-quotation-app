@@ -19,16 +19,12 @@ export default function EditQuotePage() {
         fetch(`/api/quotes/${id}`).then(res => res.json()).then(data => {
             if (data.success) {
                 const fetchedQuote = data.data;
-
-                // ✅ IMPROVED LOGIC:
-                // Only generate placeholders if the delegates array is truly null or undefined.
-                // If the array exists (even if partially empty), keep it.
-                if (!fetchedQuote.delegates) {
+                // ✅ Only generate placeholders if the array is missing entirely
+                if (!fetchedQuote.delegates || fetchedQuote.delegates.length === 0) {
                     fetchedQuote.delegates = Array.from({ length: fetchedQuote.delegateCount || 1 }, () => ({
                         firstName: "", lastName: "", wantsMaterials: false, wantsTake2: false
                     }));
                 }
-
                 setQuote(fetchedQuote);
                 if (fetchedQuote.financials?.mileageRate) setMileageRate(fetchedQuote.financials.mileageRate);
             }
