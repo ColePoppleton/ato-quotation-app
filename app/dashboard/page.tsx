@@ -61,6 +61,28 @@ export default async function DashboardPage() {
                 </div>
             </div>
 
+            {/* Quick Add Registry Actions */}
+            <div className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-900">Database Registry</h3>
+                    <p className="text-sm text-gray-500">Log new entities into the system before quoting.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                    <Link href="/dashboard/organisations/new" className="px-4 py-2 bg-blue-50 text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition-colors text-sm border border-blue-200">
+                        + Add Client
+                    </Link>
+                    <Link href="/dashboard/delegates/new" className="px-4 py-2 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors text-sm border border-green-200">
+                        + Log Delegate
+                    </Link>
+                    <Link href="/dashboard/trainers/new" className="px-4 py-2 bg-purple-50 text-purple-700 font-semibold rounded-lg hover:bg-purple-100 transition-colors text-sm border border-purple-200">
+                        + Register Trainer
+                    </Link>
+                    <Link href="/dashboard/courses/new" className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
+                        + New Course
+                    </Link>
+                </div>
+            </div>
+
             {/* Primary Actions with Magic Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Link href="/dashboard/quotes/new" className="block group">
