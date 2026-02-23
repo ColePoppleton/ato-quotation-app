@@ -8,6 +8,10 @@ export default function NewCoursePage() {
     const [title, setTitle] = useState("");
     const [examBody, setExamBody] = useState("PeopleCert");
     const [requiresExam, setRequiresExam] = useState(true);
+    // New Fields
+    const [materialsCost, setMaterialsCost] = useState(25.00);
+    const [take2Cost, setTake2Cost] = useState(50.00);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -20,17 +24,19 @@ export default function NewCoursePage() {
             const response = await fetch('/api/courses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, examBody, requiresExam }),
+                body: JSON.stringify({
+                    title,
+                    examBody,
+                    requiresExam,
+                    materialsCost: Number(materialsCost),
+                    take2Cost: Number(take2Cost)
+                }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to create course");
-            }
-
+            if (!response.ok) throw new Error("Failed to create course");
             router.push("/dashboard");
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : String(err));
+        } catch (err: any) {
+            setError(err.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -38,29 +44,23 @@ export default function NewCoursePage() {
 
     return (
         <div className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-3xl p-10 shadow-sm">
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-8">Add New Course to Catalog</h2>
-
-            {error && <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl">{error}</div>}
-
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-8">Add New Course</h2>
             <form onSubmit={handleCreateCourse} className="space-y-6">
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Course Title</label>
-                    <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border p-3 rounded-lg" placeholder="e.g., ITIL 4 Foundation" />
+                    <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border p-3 rounded-lg" />
                 </div>
 
-                <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Exam Body</label>
-                    <select value={examBody} onChange={(e) => setExamBody(e.target.value)} className="w-full border p-3 rounded-lg">
-                        <option value="PeopleCert">PeopleCert</option>
-                        <option value="EXIN">EXIN</option>
-                        <option value="APMG">APMG</option>
-                    </select>
+                <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Book/Materials Price (£)</label>
+                        <input type="number" step="0.01" value={materialsCost} onChange={(e) => setMaterialsCost(Number(e.target.value))} className="w-full border p-3 rounded-lg" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Take 2 Voucher Price (£)</label>
+                        <input type="number" step="0.01" value={take2Cost} onChange={(e) => setTake2Cost(Number(e.target.value))} className="w-full border p-3 rounded-lg" />
+                    </div>
                 </div>
-
-                <label className="flex items-center gap-3 mt-4">
-                    <input type="checkbox" checked={requiresExam} onChange={(e) => setRequiresExam(e.target.checked)} className="w-5 h-5" />
-                    <span className="font-semibold text-gray-900">Mandatory Exam Requirement</span>
-                </label>
 
                 <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl mt-8">
                     {isSubmitting ? "Saving..." : "Save Course"}

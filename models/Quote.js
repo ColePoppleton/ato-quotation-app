@@ -16,11 +16,14 @@ const QuoteSchema = new mongoose.Schema({
         enum: ['draft', 'pending_approval', 'approved', 'sent'],
         default: 'draft'
     },
-    delegateCount: {
-        type: Number,
-        required: true,
-        min: [1, 'Must have at least 1 delegate']
-    },
+    delegates: [{
+        firstName: String,
+        lastName: String,
+        email: String,
+        wantsMaterials: { type: Boolean, default: false },
+        wantsTake2: { type: Boolean, default: false }
+    }],
+    delegateCount: { type: Number, default: 1 },
     includesExam: {
         type: Boolean,
         default: true
@@ -30,6 +33,8 @@ const QuoteSchema = new mongoose.Schema({
         examFees: { type: Number, default: 0 },
         travelCost: { type: Number, default: 0 },
         accommodationCost: { type: Number, default: 0 },
+        trainingMaterialsCost: { type: Number, default: 0 },
+        take2Cost: { type: Number, default: 0 },
         totalPrice: { type: Number, default: 0 }
     }
 }, { timestamps: true });
