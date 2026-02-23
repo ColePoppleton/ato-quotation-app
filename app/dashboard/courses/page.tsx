@@ -12,45 +12,41 @@ export default async function CoursesPage() {
     const courses = await Course.find({}).sort({ title: 1 }).lean();
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">Course Catalog</h1>
-                    <p className="text-gray-500 mt-1">Master definitions for training programs.</p>
+        <div className="max-w-6xl mx-auto space-y-10 py-6">
+            <header className="flex justify-between items-center">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-light tracking-tight text-slate-900">Course Catalog</h1>
+                    <p className="text-slate-500 font-medium">Standardized training definitions and exam logic.</p>
                 </div>
-                <Link href="/dashboard/courses/new" className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
-                    + Add Course
+                <Link href="/dashboard/courses/new" className="px-6 py-3 bg-slate-900 text-white font-medium rounded-xl hover:bg-black transition-all shadow-sm">
+                    + Create Course
                 </Link>
-            </div>
+            </header>
 
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500">
-                    <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Title</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Exam Body</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Mandatory Exam</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                    {courses.length === 0 ? (
-                        <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">No courses defined.</td></tr>
-                    ) : (
-                        courses.map((course: any) => (
-                            <tr key={course._id.toString()} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-gray-900">{course.title}</td>
-                                <td className="px-6 py-4">{course.examBody}</td>
-                                <td className="px-6 py-4">
-                                    {course.requiresExam ?
-                                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">Yes</span> :
-                                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-bold uppercase">No</span>
-                                    }
-                                </td>
-                            </tr>
-                        ))
-                    )}
-                    </tbody>
-                </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {courses.map((course: any) => (
+                    <div key={course._id.toString()} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between group">
+                        <div>
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded">
+                                    {course.examBody}
+                                </span>
+                                {course.requiresExam && (
+                                    <span className="text-[10px] font-bold text-emerald-600 border border-emerald-100 bg-emerald-50 px-2 py-1 rounded uppercase">
+                                        Exam Mandatory
+                                    </span>
+                                )}
+                            </div>
+                            <h3 className="text-xl font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                                {course.title}
+                            </h3>
+                        </div>
+                        <div className="mt-8 pt-4 border-t border-slate-50 flex justify-between items-center">
+                            <span className="text-xs text-slate-400">ID: {course._id.toString().slice(-6)}</span>
+                            <button className="text-xs font-bold text-slate-900 hover:underline">Edit Catalog →</button>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

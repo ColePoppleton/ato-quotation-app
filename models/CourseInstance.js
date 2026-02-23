@@ -9,6 +9,7 @@ const CourseInstanceSchema = new mongoose.Schema({
     pricePerDelegate: { type: Number, default: 1000 },
     trainerIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Trainer' }],
     bookedDelegates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Delegate' }],
+    attended: { type: Boolean, default: false },
     bookings: [{
         delegateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Delegate' },
         quoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quote' },

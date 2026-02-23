@@ -16,42 +16,35 @@ export default async function DelegatesPage() {
         .lean();
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">Delegates</h1>
-                    <p className="text-gray-500 mt-1">Log of all individual learners tied to corporate clients.</p>
-                </div>
-                <Link href="/dashboard/delegates/new" className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
-                    + Log Delegate
+        <div className="max-w-6xl mx-auto space-y-10">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Delegates</h1>
+                <Link href="/dashboard/delegates/new" className="px-6 py-3 bg-slate-900 text-white font-bold rounded-2xl text-sm">
+                    Log Delegate
                 </Link>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500">
+            <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50/50 border-b border-slate-100">
                     <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Name</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Email</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Organisation</th>
+                        <th className="px-8 py-5 text-[10px] font-bold uppercase text-slate-400 tracking-widest">Learner</th>
+                        <th className="px-8 py-5 text-[10px] font-bold uppercase text-slate-400 tracking-widest">Email Address</th>
+                        <th className="px-8 py-5 text-[10px] font-bold uppercase text-slate-400 tracking-widest text-right">Organisation</th>
                     </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
-                    {delegates.length === 0 ? (
-                        <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">No delegates registered.</td></tr>
-                    ) : (
-                        delegates.map((delegate: any) => (
-                            <tr key={delegate._id.toString()} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-gray-900">
-                                    {delegate.firstName} {delegate.lastName}
-                                </td>
-                                <td className="px-6 py-4">{delegate.email}</td>
-                                <td className="px-6 py-4 text-blue-600 font-medium">
-                                    {delegate.organisationId?.name || "Unknown"}
-                                </td>
-                            </tr>
-                        ))
-                    )}
+                    <tbody className="divide-y divide-slate-50">
+                    {delegates.map((delegate: any) => (
+                        <tr key={delegate._id.toString()} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-8 py-5 font-bold text-slate-900">{delegate.firstName} {delegate.lastName}</td>
+                            <td className="px-8 py-5 text-slate-500 font-medium">{delegate.email}</td>
+                            <td className="px-8 py-5 text-right">
+                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                                        {delegate.organisationId?.name}
+                                    </span>
+                            </td>
+                        </tr>
+                    ))}
                     </tbody>
                 </table>
             </div>

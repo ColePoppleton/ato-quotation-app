@@ -1,158 +1,106 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
-    // 1. Branding State
     const [settings, setSettings] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    // 2. Financial Rates State
-    const [trainers, setTrainers] = useState<any[]>([]);
-    const [instances, setInstances] = useState<any[]>([]);
-
-    // Fetch all data when the page loads
     useEffect(() => {
-        Promise.all([
-            fetch('/api/settings'),
-            fetch('/api/trainers'),
-            fetch('/api/course-instances')
-        ]).then(async ([settingsRes, trainersRes, instancesRes]) => {
-            const sData = await settingsRes.json();
-            const tData = await trainersRes.json();
-            const iData = await instancesRes.json();
-
-            if (sData.success) setSettings(sData.data);
-            if (tData.success) setTrainers(tData.data);
-            if (iData.success) setInstances(iData.data);
+        fetch('/api/settings').then(res => res.json()).then(data => {
+            if (data.success) setSettings(data.data);
         });
     }, []);
 
-    // --- ACTIONS ---
-
-    const handleSaveBranding = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = async () => {
         setIsSaving(true);
         await fetch('/api/settings', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                companyName: settings.companyName,
-                companyAddress: settings.companyAddress,
-                primaryColor: settings.primaryColor,
-                logoUrl: settings.logoUrl,
-                mileageRate: settings.mileageRate // Added so you can update HMRC rates!
-            })
+            body: JSON.stringify(settings)
         });
         setIsSaving(false);
-        alert("Platform settings saved successfully!");
+        alert("Configuration Synchronized.");
     };
 
-    const updateRate = async (endpoint: string, id: string, payload: object) => {
-        await fetch(`${endpoint}/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        // No alert needed here to keep the UI smooth, it silently updates the DB when the user clicks away
-    };
-
-    if (!settings) return <div className="p-10 font-medium text-gray-500 flex items-center gap-3">Loading settings...</div>;
+    if (!settings) return <div className="p-20 text-center font-medium text-slate-400">Loading Preferences...</div>;
 
     return (
-        <div className="max-w-6xl mx-auto space-y-10">
-            <h1 className="text-3xl font-extrabold text-gray-900">Platform Settings</h1>
+        <div className="max-w-6xl mx-auto space-y-12 py-8">
+            <header className="flex justify-between items-end border-b border-slate-100 pb-8">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-light tracking-tight text-slate-900">Platform Configuration</h1>
+                    <p className="text-slate-500 font-medium">Global branding, financial logic, and system appearance.</p>
+                </div>
+                <button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all disabled:opacity-50">
+                    {isSaving ? "Syncing..." : "Save Changes"}
+                </button>
+            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                {/* Left Side: Form */}
+                <div className="lg:col-span-7 space-y-8">
+                    <section className="space-y-6 bg-white p-8 border border-slate-200 rounded-3xl shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-900">Brand Identity</h2>
 
-                {/* LEFT COLUMN: BRANDING FORM */}
-                <form onSubmit={handleSaveBranding} className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm space-y-5 h-fit">
-                    <h2 className="text-xl font-bold mb-2">Company Branding & Defaults</h2>
+                        <div className="grid grid-cols-1 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Company Name</label>
+                                <input type="text" value={settings.companyName} onChange={e => setSettings({...settings, companyName: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold mb-1">Company Name</label>
-                        <input type="text" value={settings.companyName || ''} onChange={e => setSettings({...settings, companyName: e.target.value})} className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                    </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Brand Accent</label>
+                                    <div className="flex gap-3">
+                                        <input type="color" value={settings.primaryColor} onChange={e => setSettings({...settings, primaryColor: e.target.value})} className="h-10 w-10 rounded-lg cursor-pointer border-none" />
+                                        <input type="text" value={settings.primaryColor} className="flex-1 bg-slate-50 border border-slate-100 px-3 rounded-lg font-mono text-sm uppercase" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Travel Rate (£/mi)</label>
+                                    <input type="number" step="0.01" value={settings.mileageRate} onChange={e => setSettings({...settings, mileageRate: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-medium" />
+                                </div>
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold mb-1">Company Address</label>
-                        <textarea value={settings.companyAddress || ''} onChange={e => setSettings({...settings, companyAddress: e.target.value})} className="w-full border border-gray-300 p-3 rounded-lg h-24 focus:ring-2 focus:ring-blue-500 outline-none" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">Primary Color (Hex)</label>
-                            <div className="flex gap-2">
-                                <input type="color" value={settings.primaryColor || '#2563EB'} onChange={e => setSettings({...settings, primaryColor: e.target.value})} className="h-12 w-12 border rounded cursor-pointer" />
-                                <input type="text" value={settings.primaryColor || '#2563EB'} onChange={e => setSettings({...settings, primaryColor: e.target.value})} className="flex-1 border border-gray-300 p-3 rounded-lg uppercase outline-none" />
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Logo Asset Link</label>
+                                <input type="url" value={settings.logoUrl} onChange={e => setSettings({...settings, logoUrl: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-medium text-blue-600" />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">Travel Rate (£/mile)</label>
-                            <input type="number" step="0.01" value={settings.mileageRate || 0.45} onChange={e => setSettings({...settings, mileageRate: Number(e.target.value)})} className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-semibold mb-1">Logo Image URL</label>
-                        <input type="url" placeholder="https://..." value={settings.logoUrl || ''} onChange={e => setSettings({...settings, logoUrl: e.target.value})} className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                        <p className="text-xs text-gray-500 mt-1">Provide a direct link to your company logo (PNG/JPG).</p>
-                    </div>
-
-                    <button type="submit" disabled={isSaving} className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl mt-4 hover:bg-blue-700 transition-colors">
-                        {isSaving ? "Saving..." : "Save Settings"}
-                    </button>
-                </form>
-
-                {/* RIGHT COLUMN: FINANCIAL RATES */}
-                <div className="space-y-8">
-
-                    {/* Trainer Rates */}
-                    <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-                        <h2 className="text-xl font-bold mb-6">Trainer Daily Rates</h2>
-                        <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                            {trainers.map(t => (
-                                <div key={t._id} className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                    <span className="font-medium text-gray-700">{t.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-gray-500 font-bold">£</span>
-                                        <input
-                                            type="number"
-                                            defaultValue={t.dailyRate || 500}
-                                            onBlur={(e) => updateRate('/api/trainers', t._id, { dailyRate: Number(e.target.value) })}
-                                            className="w-24 border border-gray-300 p-2 rounded-lg text-right focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 font-bold"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                            {trainers.length === 0 && <p className="text-sm text-gray-500">No trainers registered yet.</p>}
-                        </div>
-                    </div>
-
-                    {/* Course Instance Rates */}
-                    <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-                        <h2 className="text-xl font-bold mb-6">Charge Per Delegate</h2>
-                        <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                            {instances.map(i => (
-                                <div key={i._id} className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                    <span className="font-medium text-gray-700">{i.courseId?.title} ({i.deliveryType})</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-gray-500 font-bold">£</span>
-                                        <input
-                                            type="number"
-                                            defaultValue={i.pricePerDelegate || 1000}
-                                            onBlur={(e) => updateRate('/api/course-instances', i._id, { pricePerDelegate: Number(e.target.value) })}
-                                            className="w-24 border border-gray-300 p-2 rounded-lg text-right focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 font-bold"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                            {instances.length === 0 && <p className="text-sm text-gray-500">No instances scheduled yet.</p>}
-                        </div>
-                    </div>
-
+                    </section>
                 </div>
 
+                {/* Right Side: High Fidelity Preview */}
+                <div className="lg:col-span-5 space-y-6">
+                    <div className="bg-slate-50 border border-slate-200 rounded-3xl p-8 sticky top-8">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8">System Preview</p>
+
+                        {/* Mockup of Sidebar/Header */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col items-center gap-6">
+                            <div className="h-20 w-full bg-slate-50 rounded-xl flex items-center justify-center p-4">
+                                {settings.logoUrl ? (
+                                    <img src={settings.logoUrl} alt="Preview" className="max-h-full max-w-full object-contain" />
+                                ) : (
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase">Logo Preview</span>
+                                )}
+                            </div>
+                            <div className="w-full space-y-3">
+                                <div className="h-2 w-full bg-slate-100 rounded-full" />
+                                <div className="h-2 w-2/3 bg-slate-100 rounded-full" />
+                                <div className="pt-4 flex justify-between items-center">
+                                    <div className="h-8 w-24 rounded-lg" style={{ backgroundColor: settings.primaryColor }} />
+                                    <span className="text-xs font-bold text-slate-900">{settings.companyName}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-[10px] leading-relaxed">
+                            <strong>NOTE:</strong> Colors and fonts updated here will propagate instantly across the Dashboard, Quotation PDFs, and Client Portals.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

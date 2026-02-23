@@ -1,53 +1,42 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import Link from "next/link";
 import { dbConnect } from "@/lib/mongodb";
 import Organisation from "@/models/Organisation";
+import Link from "next/link";
 
 export default async function OrganisationsPage() {
-    const session = await auth();
-    if (!session) redirect("/");
-
+    await auth();
     await dbConnect();
     const organisations = await Organisation.find({}).sort({ createdAt: -1 }).lean();
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">Corporate Clients</h1>
-                    <p className="text-gray-500 mt-1">Manage client organisations and billing details.</p>
-                </div>
-                <Link href="/dashboard/organisations/new" className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
-                    + Add Client
+        <div className="max-w-6xl mx-auto space-y-10">
+            <header className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-slate-900">Corporate Clients</h1>
+                <Link href="/dashboard/organisations/new" className="px-6 py-3 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all text-sm">
+                    Add Client
                 </Link>
-            </div>
+            </header>
 
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500">
-                    <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Company Name</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Contact Email</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">City</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Date Added</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                    {organisations.length === 0 ? (
-                        <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No clients registered.</td></tr>
-                    ) : (
-                        organisations.map((org: any) => (
-                            <tr key={org._id.toString()} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-bold text-gray-900">{org.name}</td>
-                                <td className="px-6 py-4">{org.contactEmail}</td>
-                                <td className="px-6 py-4">{org.billingAddress?.city || "N/A"}</td>
-                                <td className="px-6 py-4">{new Date(org.createdAt).toLocaleDateString()}</td>
-                            </tr>
-                        ))
-                    )}
-                    </tbody>
-                </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {organisations.map((org: any) => (
+                    <div key={org._id.toString()} className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm hover:border-blue-300 hover:shadow-md transition-all group">
+                        <div className="flex flex-col h-full">
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{org.name}</h3>
+                                <p className="text-sm text-slate-500 mt-1">{org.contactEmail}</p>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+                                        {org.billingAddress?.city || "Remote"}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mt-6 pt-4 border-t border-slate-50 flex justify-between items-center">
+                                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">ID: {org._id.toString().slice(-6)}</span>
+                                <Link href={`/dashboard/organisations/${org._id}`} className="text-xs font-bold text-slate-900">Edit Details →</Link>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

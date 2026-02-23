@@ -8,6 +8,7 @@ import Quote from "@/models/Quote";
 import Delegate from "@/models/Delegate";
 import CourseInstance from "@/models/CourseInstance";
 import RevenueChart from "@/components/RevenueChart";
+import {cn} from "@/lib/utils";
 
 export default async function DashboardPage() {
     const session = await auth();
@@ -15,170 +16,89 @@ export default async function DashboardPage() {
 
     await dbConnect();
 
-    // Fetch the real analytics data simultaneously
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     const [
         pendingQuotesCount,
         delegatesYTDCount,
         activeInstancesCount,
-        recentQuotes
+        recentQuotes,
+        chartQuotes
     ] = await Promise.all([
         Quote.countDocuments({ status: { $in: ['draft', 'pending_approval'] } }),
         Delegate.countDocuments({ createdAt: { $gte: startOfYear } }),
         CourseInstance.countDocuments({ endDate: { $gte: new Date() } }),
-        Quote.find({}).sort({ createdAt: -1 }).limit(5).populate('organisationId', 'name').lean()
+        Quote.find({}).sort({ createdAt: -1 }).limit(5).populate('organisationId', 'name').lean(),
+        Quote.find({ createdAt: { $gte: sixMonthsAgo }, status: { $ne: 'draft' } }).lean()
     ]);
 
-    const chartData = [
-        { month: 'Jan', value: 12500 }, { month: 'Feb', value: 18000 },
-        { month: 'Mar', value: 15000 }, { month: 'Apr', value: 24000 },
-        { month: 'May', value: 32000 }, { month: 'Jun', value: 28000 },
-    ];
+    // Data Aggregation for Recharts
+    const monthlyTotals = chartQuotes.reduce((acc: any, quote: any) => {
+        const month = new Date(quote.createdAt).toLocaleString('default', { month: 'short' });
+        acc[month] = (acc[month] || 0) + (quote.financials?.totalPrice || 0);
+        return acc;
+    }, {});
+
+    const chartData = Object.keys(monthlyTotals).map(month => ({
+        month,
+        value: monthlyTotals[month]
+    })).sort((a, b) => {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return months.indexOf(a.month) - months.indexOf(b.month);
+    });
 
     return (
-        <div className="max-w-6xl mx-auto space-y-10">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-                        Welcome back, {session.user?.name?.split(" ")[0] || "User"}
-                    </h1>
-                    <p className="text-gray-500 mt-2">
-                        Manage your ITIL, AGILE, and PRINCE2 training schedules.
-                    </p>
+        <div className="max-w-6xl mx-auto space-y-12">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+                    <p className="text-slate-500 font-medium">Here is what's happening with your courses today.</p>
                 </div>
             </header>
 
-            {/* LIVE Analytics using Magic UI NumberTicker */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white border rounded-2xl p-6 shadow-sm">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Pending Quotes</p>
-                    <div className="text-4xl font-black text-blue-600">
-                        <NumberTicker value={pendingQuotesCount} />
+                <StatsCard label="Pending Quotes" value={pendingQuotesCount} color="text-blue-600" />
+                <StatsCard label="Delegates YTD" value={delegatesYTDCount} color="text-emerald-600" />
+                <StatsCard label="Active Instances" value={activeInstancesCount} color="text-violet-600" />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-lg font-bold text-slate-900">Revenue Pipeline</h3>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Last 6 Months</span>
                     </div>
+                    <RevenueChart data={chartData} />
                 </div>
-                <div className="bg-white border rounded-2xl p-6 shadow-sm">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Delegates Trained (YTD)</p>
-                    <div className="text-4xl font-black text-green-600">
-                        <NumberTicker value={delegatesYTDCount} />
-                    </div>
-                </div>
-                <div className="bg-white border rounded-2xl p-6 shadow-sm">
-                    <p className="text-sm font-medium text-gray-500 mb-1">Active Course Instances</p>
-                    <div className="text-4xl font-black text-purple-600">
-                        <NumberTicker value={activeInstancesCount} />
+
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Quotes</h3>
+                    <div className="space-y-5">
+                        {recentQuotes.map((quote: any) => (
+                            <div key={quote._id} className="flex flex-col border-b border-slate-50 pb-4 last:border-0">
+                                <span className="text-sm font-bold text-slate-900">{quote.organisationId?.name}</span>
+                                <div className="flex justify-between items-center mt-1">
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{quote.status}</span>
+                                    <span className="text-xs font-medium text-slate-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
 
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Pipeline Revenue (Trailing 6 Months)</h3>
-                <RevenueChart data={chartData} />
-            </div>
-
-            {/* Quick Add Registry Actions */}
-            <div className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
-                    <h3 className="text-lg font-bold text-gray-900">Database Registry</h3>
-                    <p className="text-sm text-gray-500">Log new entities into the system before quoting.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                    <Link href="/dashboard/organisations/new" className="px-4 py-2 bg-blue-50 text-blue-700 font-semibold rounded-lg hover:bg-blue-100 transition-colors text-sm border border-blue-200">
-                        + Add Client
-                    </Link>
-                    <Link href="/dashboard/delegates/new" className="px-4 py-2 bg-green-50 text-green-700 font-semibold rounded-lg hover:bg-green-100 transition-colors text-sm border border-green-200">
-                        + Log Delegate
-                    </Link>
-                    <Link href="/dashboard/trainers/new" className="px-4 py-2 bg-purple-50 text-purple-700 font-semibold rounded-lg hover:bg-purple-100 transition-colors text-sm border border-purple-200">
-                        + Register Trainer
-                    </Link>
-                    <Link href="/dashboard/courses/new" className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors text-sm border border-gray-300">
-                        + New Course
-                    </Link>
-                </div>
-            </div>
-
-            {/* Primary Actions with Magic Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Link href="/dashboard/quotes/new" className="block group">
-                    <MagicCard
-                        className="p-8 h-full transition-all cursor-pointer"
-                        gradientColor="rgba(37,99,235,0.1)"
-                    >
-                        <h3 className="text-2xl font-bold mb-3 text-gray-900 group-hover:text-blue-600 transition-colors">
-                            Create New Quote
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                            Draft a new financial quotation for a client container. Automatically enforces mandatory exam logic and the minimum delegate requirements.
-                        </p>
-                    </MagicCard>
-                </Link>
-
-                <Link href="/dashboard/instances" className="block group">
-                    <MagicCard
-                        className="p-8 h-full transition-all cursor-pointer"
-                        gradientColor="rgba(147,51,234,0.1)"
-                    >
-                        <h3 className="text-2xl font-bold mb-3 text-gray-900 group-hover:text-purple-600 transition-colors">
-                            Manage Scheduling
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                            Assign trainers to specific virtual or in-person instances, attach course materials, and review current delegate booking capacities.
-                        </p>
-                    </MagicCard>
-                </Link>
-
-                <div className="mt-12 md:col-span-2 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-gray-900">Recent Quotations</h3>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-600">
-                            <thead className="bg-white border-b border-gray-100 text-xs uppercase text-gray-400">
-                            <tr>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Client</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Status</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Delegates</th>
-                                <th className="px-6 py-4 font-semibold tracking-wider">Date Created</th>
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                            {recentQuotes.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                                        No quotes generated yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                recentQuotes.map((quote: any) => (
-                                    <tr key={quote._id.toString()} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-gray-900">
-                                            {quote.organisationId?.name || "Unknown"}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                ${quote.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                                                quote.status === 'pending_approval' ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-green-100 text-green-700'}`}
-                                            >
-                                                {quote.status.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {quote.delegateCount} {quote.delegateCount < 5 && '⚠️'}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {new Date(quote.createdAt).toLocaleDateString()}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+function StatsCard({ label, value, color }: { label: string, value: number, color: string }) {
+    return (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+            <div className={cn("text-4xl font-bold tracking-tight", color)}>
+                <NumberTicker value={value} />
             </div>
         </div>
     );
