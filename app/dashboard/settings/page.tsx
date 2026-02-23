@@ -54,8 +54,18 @@ export default function SettingsPage() {
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Brand Accent</label>
                                     <div className="flex gap-3">
-                                        <input type="color" value={settings.primaryColor} onChange={e => setSettings({...settings, primaryColor: e.target.value})} className="h-10 w-10 rounded-lg cursor-pointer border-none" />
-                                        <input type="text" value={settings.primaryColor} className="flex-1 bg-slate-50 border border-slate-100 px-3 rounded-lg font-mono text-sm uppercase" />
+                                        <input
+                                            type="color"
+                                            value={settings.primaryColor}
+                                            onChange={e => setSettings({...settings, primaryColor: e.target.value})}
+                                            className="h-10 w-10 rounded-lg cursor-pointer border-none"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={settings.primaryColor}
+                                            onChange={e => setSettings({...settings, primaryColor: e.target.value})} // ADDED THIS LINE
+                                            className="flex-1 bg-slate-50 border border-slate-100 px-3 rounded-lg font-mono text-sm uppercase"
+                                        />
                                     </div>
                                 </div>
                                 <div className="space-y-2">

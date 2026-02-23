@@ -19,12 +19,16 @@ export default function EditQuotePage() {
         fetch(`/api/quotes/${id}`).then(res => res.json()).then(data => {
             if (data.success) {
                 const fetchedQuote = data.data;
-                // Initialize delegates if they don't exist in the DB record yet
-                if (!fetchedQuote.delegates || fetchedQuote.delegates.length === 0) {
+
+                // ✅ IMPROVED LOGIC:
+                // Only generate placeholders if the delegates array is truly null or undefined.
+                // If the array exists (even if partially empty), keep it.
+                if (!fetchedQuote.delegates) {
                     fetchedQuote.delegates = Array.from({ length: fetchedQuote.delegateCount || 1 }, () => ({
                         firstName: "", lastName: "", wantsMaterials: false, wantsTake2: false
                     }));
                 }
+
                 setQuote(fetchedQuote);
                 if (fetchedQuote.financials?.mileageRate) setMileageRate(fetchedQuote.financials.mileageRate);
             }
@@ -137,23 +141,32 @@ export default function EditQuotePage() {
                         <h2 className="text-lg font-bold text-slate-900">Delegate Requirements</h2>
                     </div>
                     <div className="divide-y divide-slate-100">
-                        {(quote.delegates || []).map((delegate: any, index: number) => (
-                            <div key={index} className="px-8 py-5 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                                <span className="font-semibold text-slate-700">
-                                    {delegate.firstName || delegate.lastName ? `${delegate.firstName} ${delegate.lastName}` : `Delegate ${index + 1}`}
-                                </span>
-                                <div className="flex gap-6">
-                                    <label className="flex items-center space-x-2 cursor-pointer bg-slate-100 px-3 py-2 rounded-lg">
-                                        <input type="checkbox" checked={!!delegate.wantsMaterials} onChange={() => toggleDelegateOption(index, 'wantsMaterials')} className="w-4 h-4 text-blue-600" />
-                                        <span className="text-[10px] font-bold uppercase">Book (£{bookPrice})</span>
-                                    </label>
-                                    <label className="flex items-center space-x-2 cursor-pointer bg-slate-100 px-3 py-2 rounded-lg">
-                                        <input type="checkbox" checked={!!delegate.wantsTake2} onChange={() => toggleDelegateOption(index, 'wantsTake2')} className="w-4 h-4 text-blue-600" />
-                                        <span className="text-[10px] font-bold uppercase">Take 2 (£{take2Price})</span>
-                                    </label>
+                        {(quote.delegates || []).map((delegate: any, index: number) => {
+                            const fullName = (delegate.firstName || delegate.lastName)
+                                ? `${delegate.firstName} ${delegate.lastName}`.trim()
+                                : null;
+
+                            return (
+                                <div key={index} className="px-8 py-5 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                    <div className="flex flex-col">
+                        <span className="font-semibold text-slate-700">
+                            {fullName || `Delegate ${index + 1} (Name TBD)`}
+                        </span>
+                                        {delegate.email && <span className="text-xs text-slate-400">{delegate.email}</span>}
+                                    </div>
+                                    <div className="flex gap-6">
+                                        <label className="flex items-center space-x-2 cursor-pointer bg-slate-100 px-3 py-2 rounded-lg">
+                                            <input type="checkbox" checked={!!delegate.wantsMaterials} onChange={() => toggleDelegateOption(index, 'wantsMaterials')} className="w-4 h-4 text-blue-600" />
+                                            <span className="text-[10px] font-bold uppercase">Book (£{bookPrice})</span>
+                                        </label>
+                                        <label className="flex items-center space-x-2 cursor-pointer bg-slate-100 px-3 py-2 rounded-lg">
+                                            <input type="checkbox" checked={!!delegate.wantsTake2} onChange={() => toggleDelegateOption(index, 'wantsTake2')} className="w-4 h-4 text-blue-600" />
+                                            <span className="text-[10px] font-bold uppercase">Take 2 (£{take2Price})</span>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ); // Added closing semicolon and parenthesis here
+                        })}
                     </div>
                 </div>
 

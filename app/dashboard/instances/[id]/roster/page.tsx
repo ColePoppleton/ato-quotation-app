@@ -49,6 +49,15 @@ export default function CourseRoster() {
         });
     };
 
+    const removeDelegate = async (bookingId: string) => {
+        if (!confirm("Remove this delegate from the roster?")) return;
+
+        await fetch(`/api/course-instances/${id}/bookings/${bookingId}`, {
+            method: 'DELETE'
+        });
+        window.location.reload();
+    };
+
     if (!instance) return <p className="p-10">Loading Roster...</p>;
 
     return (
@@ -79,7 +88,8 @@ export default function CourseRoster() {
                     </thead>
                     <tbody className="divide-y">
                     {instance.bookings.map((b: any) => (
-                        <tr key={b.delegateId._id}>
+                        // Use the booking ID (b._id) instead of the delegate ID for the key
+                        <tr key={b._id}>
                             <td className="px-6 py-4 font-bold">{b.delegateId.firstName} {b.delegateId.lastName}</td>
                             <td className="px-6 py-4">{b.delegateId.organisationId?.name}</td>
                             <td className="px-6 py-4">
@@ -89,6 +99,15 @@ export default function CourseRoster() {
                                     onChange={(e) => toggleAttendance(b.delegateId._id, e.target.checked)}
                                     className="w-5 h-5 rounded border-gray-300 text-blue-600"
                                 />
+                            </td>
+                            {/* ADD THIS: Remove Button Cell */}
+                            <td className="px-6 py-4 text-right">
+                                <button
+                                    onClick={() => removeDelegate(b._id)}
+                                    className="text-red-500 hover:text-red-700 font-bold"
+                                >
+                                    Remove
+                                </button>
                             </td>
                         </tr>
                     ))}

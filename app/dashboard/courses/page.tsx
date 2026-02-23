@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { dbConnect } from "@/lib/mongodb";
 import Course from "@/models/Course";
+import DeleteButton from "@/components/DeleteButton";
 
 export default async function CoursesPage() {
     const session = await auth();
@@ -44,6 +45,7 @@ export default async function CoursesPage() {
                         <div className="mt-8 pt-4 border-t border-slate-50 flex justify-between items-center">
                             <span className="text-xs text-slate-400">ID: {course._id.toString().slice(-6)}</span>
                             <button className="text-xs font-bold text-slate-900 hover:underline">Edit Catalog →</button>
+                            <DeleteButton endpoint={`/api/courses/${course._id}`} />
                         </div>
                     </div>
                 ))}
