@@ -17,6 +17,7 @@ export default function NewInstancePage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [location, setLocation] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -40,7 +41,7 @@ export default function NewInstancePage() {
             body: JSON.stringify({
                 courseId: selectedCourseId,
                 trainerIds: [selectedTrainerId],
-                deliveryType, startDate, endDate
+                deliveryType, startDate, endDate,location
             }),
         });
         router.push("/dashboard");
@@ -77,6 +78,17 @@ export default function NewInstancePage() {
                         <label className="block text-sm font-semibold mb-2">End Date</label>
                         <input required type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full border p-3 rounded-lg" />
                     </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold mb-2">Delivery Type</label>
+                    <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value)} className="w-full border p-3 rounded-lg">
+                        <option value="virtual">Virtual</option>
+                        <option value="in-person">In-Person</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold mb-2">Location / Link</label>
+                    <input type="text" onChange={(e) => setLocation(e.target.value)} className="w-full border p-3 rounded-lg" placeholder="Zoom link or Physical Address" />
                 </div>
 
                 <button type="submit" className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl">Schedule Instance</button>

@@ -21,21 +21,18 @@ const QuoteSchema = new mongoose.Schema({
         required: true,
         min: [1, 'Must have at least 1 delegate']
     },
+    includesExam: {
+        type: Boolean,
+        default: true
+    },
     financials: {
-        basePrice: Number,
-        examFees: Number,
-        materialsCost: Number,
-        totalPrice: Number
+        basePrice: { type: Number, default: 0 },
+        examFees: { type: Number, default: 0 },
+        travelCost: { type: Number, default: 0 },
+        accommodationCost: { type: Number, default: 0 },
+        totalPrice: { type: Number, default: 0 }
     }
 }, { timestamps: true });
 
-QuoteSchema.pre('save', function(next) {
-    if (this.delegateCount < 5 && this.status === 'draft') {
-        this.status = 'pending_approval';
-    } else if (this.delegateCount >= 5 && this.status === 'draft') {
-        this.status = 'approved';
-    }
-    next();
-});
 
 export default mongoose.models.Quote || mongoose.model('Quote', QuoteSchema);

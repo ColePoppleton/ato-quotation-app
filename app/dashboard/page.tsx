@@ -5,33 +5,44 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import Link from "next/link";
 import { dbConnect } from "@/lib/mongodb";
 import Quote from "@/models/Quote";
-import Organisation from "@/models/Organisation";
+import Delegate from "@/models/Delegate";
 import CourseInstance from "@/models/CourseInstance";
+import RevenueChart from "@/components/RevenueChart";
 
 export default async function DashboardPage() {
     const session = await auth();
+    if (!session) redirect("/");
 
-    // Kick unauthenticated users back to the landing page immediately
-    if (!session) {
-        redirect("/");
-    }
-
-    // ✅ ADD THIS LINE: Force the database connection to open
     await dbConnect();
 
-    // Now it is safe to query the database
-    const recentQuotes = await Quote.find({})
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('organisationId', 'name')
-        .lean();
+    // Fetch the real analytics data simultaneously
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+
+    const [
+        pendingQuotesCount,
+        delegatesYTDCount,
+        activeInstancesCount,
+        recentQuotes
+    ] = await Promise.all([
+        Quote.countDocuments({ status: { $in: ['draft', 'pending_approval'] } }),
+        Delegate.countDocuments({ createdAt: { $gte: startOfYear } }),
+        CourseInstance.countDocuments({ endDate: { $gte: new Date() } }),
+        Quote.find({}).sort({ createdAt: -1 }).limit(5).populate('organisationId', 'name').lean()
+    ]);
+
+    const chartData = [
+        { month: 'Jan', value: 12500 }, { month: 'Feb', value: 18000 },
+        { month: 'Mar', value: 15000 }, { month: 'Apr', value: 24000 },
+        { month: 'May', value: 32000 }, { month: 'Jun', value: 28000 },
+    ];
 
     return (
         <div className="max-w-6xl mx-auto space-y-10">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-                        Welcome back, {session.user?.name?.split(" ")[0]}
+                        Welcome back, {session.user?.name?.split(" ")[0] || "User"}
                     </h1>
                     <p className="text-gray-500 mt-2">
                         Manage your ITIL, AGILE, and PRINCE2 training schedules.
@@ -39,26 +50,31 @@ export default async function DashboardPage() {
                 </div>
             </header>
 
-            {/* Quick Analytics using Magic UI NumberTicker */}
+            {/* LIVE Analytics using Magic UI NumberTicker */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white border rounded-2xl p-6 shadow-sm">
                     <p className="text-sm font-medium text-gray-500 mb-1">Pending Quotes</p>
                     <div className="text-4xl font-black text-blue-600">
-                        <NumberTicker value={12} />
+                        <NumberTicker value={pendingQuotesCount} />
                     </div>
                 </div>
                 <div className="bg-white border rounded-2xl p-6 shadow-sm">
                     <p className="text-sm font-medium text-gray-500 mb-1">Delegates Trained (YTD)</p>
                     <div className="text-4xl font-black text-green-600">
-                        <NumberTicker value={845} />
+                        <NumberTicker value={delegatesYTDCount} />
                     </div>
                 </div>
                 <div className="bg-white border rounded-2xl p-6 shadow-sm">
                     <p className="text-sm font-medium text-gray-500 mb-1">Active Course Instances</p>
                     <div className="text-4xl font-black text-purple-600">
-                        <NumberTicker value={24} />
+                        <NumberTicker value={activeInstancesCount} />
                     </div>
                 </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Pipeline Revenue (Trailing 6 Months)</h3>
+                <RevenueChart data={chartData} />
             </div>
 
             {/* Quick Add Registry Actions */}
@@ -113,7 +129,7 @@ export default async function DashboardPage() {
                     </MagicCard>
                 </Link>
 
-                <div className="mt-12 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="mt-12 md:col-span-2 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-gray-900">Recent Quotations</h3>
                     </div>
@@ -142,13 +158,13 @@ export default async function DashboardPage() {
                                             {quote.organisationId?.name || "Unknown"}
                                         </td>
                                         <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                        ${quote.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                          quote.status === 'pending_approval' ? 'bg-amber-100 text-amber-700' :
-                              'bg-green-100 text-green-700'}`}
-                      >
-                        {quote.status.replace('_', ' ')}
-                      </span>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                                                ${quote.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                                                quote.status === 'pending_approval' ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-green-100 text-green-700'}`}
+                                            >
+                                                {quote.status.replace('_', ' ')}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             {quote.delegateCount} {quote.delegateCount < 5 && '⚠️'}
