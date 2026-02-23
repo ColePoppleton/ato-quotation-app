@@ -10,14 +10,21 @@ import CourseInstance from "@/models/CourseInstance";
 
 export default async function DashboardPage() {
     const session = await auth();
+
+    // Kick unauthenticated users back to the landing page immediately
+    if (!session) {
+        redirect("/");
+    }
+
+    // ✅ ADD THIS LINE: Force the database connection to open
+    await dbConnect();
+
+    // Now it is safe to query the database
     const recentQuotes = await Quote.find({})
         .sort({ createdAt: -1 })
         .limit(5)
         .populate('organisationId', 'name')
         .lean();
-    if (!session) {
-        redirect("/");
-    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-10">
