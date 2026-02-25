@@ -3,6 +3,7 @@ import { dbConnect } from "@/lib/mongodb";
 import CourseInstance from "@/models/CourseInstance";
 import Course from "@/models/Course";
 import Trainer from "@/models/Trainer";
+import Settings from "@/models/Settings"; // Import Settings model
 import Link from "next/link";
 import AutoQuoteButton from "@/components/AutoQuoteButton";
 import { cn } from "@/lib/utils";
@@ -12,13 +13,8 @@ export default async function InstancesPage({
                                                 searchParams
                                             }: {
     searchParams: Promise<{
-        view?: string,
-        month?: string,
-        year?: string,
-        q?: string,
-        status?: string,
-        courseId?: string,
-        trainerId?: string
+        view?: string, month?: string, year?: string,
+        q?: string, status?: string, courseId?: string, trainerId?: string
     }>
 }) {
     await auth();
@@ -35,12 +31,17 @@ export default async function InstancesPage({
     const currentMonth = params.month ? parseInt(params.month) : now.getMonth();
     const currentYear = params.year ? parseInt(params.year) : now.getFullYear();
 
-    const [allCourses, allTrainers] = await Promise.all([
+    // Fetch Brand Settings
+    const brandSettings = await Settings.findOne().lean() || { primaryColor: '#2563EB' };
+
+    const [rawCourses, rawTrainers] = await Promise.all([
         Course.find({}).select('title').lean(),
         Trainer.find({}).select('name').lean()
     ]);
 
-    // Calendar Navigation
+    const allCourses = rawCourses.map((c: any) => ({ ...c, _id: c._id.toString() }));
+    const allTrainers = rawTrainers.map((t: any) => ({ ...t, _id: t._id.toString() }));
+
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
@@ -48,7 +49,6 @@ export default async function InstancesPage({
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-    // Smart Server-Side Filtering
     let mongoFilter: any = {};
     if (q) {
         const matches = await Promise.all([
@@ -65,16 +65,18 @@ export default async function InstancesPage({
     if (courseId !== 'all') mongoFilter.courseId = courseId;
     if (trainerId !== 'all') mongoFilter.trainerIds = trainerId;
 
-    const instances = await CourseInstance.find(mongoFilter)
+    const rawInstances = await CourseInstance.find(mongoFilter)
         .sort({ startDate: 1 })
         .populate({ path: 'courseId', model: Course, select: 'title' })
         .populate({ path: 'trainerIds', model: Trainer, select: 'name' })
         .lean();
 
+    const instances = JSON.parse(JSON.stringify(rawInstances));
+
     const isHistoric = (date: Date) => new Date(date) < now;
-    const upcoming = instances.filter((ins: any) => !isHistoric(ins.endDate));
+    const upcoming = instances.filter((ins: any) => !isHistoric(new Date(ins.endDate)));
     const historic = instances
-        .filter((ins: any) => isHistoric(ins.endDate))
+        .filter((ins: any) => isHistoric(new Date(ins.endDate)))
         .sort((a: any, b: any) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
     return (
@@ -82,50 +84,44 @@ export default async function InstancesPage({
             <header className="space-y-10">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div className="space-y-1">
-                        <h1 className="text-7xl font-black tracking-tighter text-slate-900 leading-none">Pipeline</h1>
-                        <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1">Training Operations Management</p>
+                        <h1 className="text-7xl font-black tracking-tighter text-slate-900 leading-none">Schedule</h1>
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1">Upcoming Events</p>
                     </div>
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <div className="flex bg-slate-100 p-1.5 rounded-[1.5rem] border border-slate-200 shadow-inner flex-1 md:flex-none">
-                            <Link href={`?view=schedule&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className={cn("flex-1 md:flex-none px-8 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all", view === 'schedule' ? "bg-white shadow-lg text-indigo-600" : "text-slate-400 hover:text-slate-900")}>List</Link>
-                            <Link href={`?view=calendar&month=${currentMonth}&year=${currentYear}&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className={cn("flex-1 md:flex-none px-8 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all", view === 'calendar' ? "bg-white shadow-lg text-indigo-600" : "text-slate-400 hover:text-slate-900")}>Grid</Link>
+                            <Link href={`?view=schedule&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className={cn("flex-1 md:flex-none px-8 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all", view === 'schedule' ? "bg-white shadow-lg text-indigo-600" : "text-slate-400 hover:text-slate-900")}>Schedule</Link>
+                            <Link href={`?view=calendar&month=${currentMonth}&year=${currentYear}&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className={cn("flex-1 md:flex-none px-8 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all", view === 'calendar' ? "bg-white shadow-lg text-indigo-600" : "text-slate-400 hover:text-slate-900")}>Calendar</Link>
                         </div>
-                        <Link href="/dashboard/instances/new" className="px-10 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all text-center">
+                        {/* RESTORED BUTTON: Using Brand Primary Color */}
+                        <Link
+                            href="/dashboard/instances/new"
+                            style={{ backgroundColor: brandSettings.primaryColor }}
+                            className="px-10 py-4 text-white rounded-[1.5rem] font-black shadow-xl hover:opacity-90 transition-all text-center whitespace-nowrap"
+                        >
                             + New Instance
                         </Link>
                     </div>
                 </div>
 
-                {/* Unified Search & Filter Control Center */}
-                <form className="bg-white p-4 rounded-[2.5rem] border-2 border-slate-100 shadow-2xl shadow-slate-100 flex flex-col lg:flex-row items-stretch gap-3">
+                <form className="bg-white p-4 rounded-[2.5rem] border-2 border-slate-100 shadow-2xl flex flex-col lg:flex-row items-stretch gap-3">
                     <input type="hidden" name="view" value={view} />
                     <div className="relative flex-1 group">
-                        <input
-                            name="q"
-                            defaultValue={q}
-                            placeholder="Search title, trainer, or location..."
-                            className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-indigo-50 outline-none transition-all"
-                        />
-                        <div className="absolute right-5 top-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                        </div>
+                        <input name="q" defaultValue={q} placeholder="Search anything..." className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-indigo-50 outline-none transition-all" />
                     </div>
-
                     <div className="flex flex-wrap items-center gap-3">
-                        <select name="courseId" defaultValue={courseId} className="bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-wider text-slate-600 focus:ring-4 focus:ring-indigo-50 transition-all outline-none">
+                        <select name="courseId" defaultValue={courseId} className="bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-black uppercase text-slate-600 outline-none">
                             <option value="all">All Courses</option>
                             {allCourses.map((c: any) => <option key={c._id} value={c._id}>{c.title}</option>)}
                         </select>
-                        <select name="trainerId" defaultValue={trainerId} className="bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-wider text-slate-600 focus:ring-4 focus:ring-indigo-50 transition-all outline-none">
+                        <select name="trainerId" defaultValue={trainerId} className="bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-black uppercase text-slate-600 outline-none">
                             <option value="all">All Trainers</option>
                             {allTrainers.map((t: any) => <option key={t._id} value={t._id}>{t.name}</option>)}
                         </select>
-                        <select name="status" defaultValue={status} className="bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-wider text-slate-600 focus:ring-4 focus:ring-indigo-50 transition-all outline-none">
-                            <option value="all">Delivery Type</option>
-                            <option value="virtual">Virtual</option>
-                            <option value="in-person">In-Person</option>
-                        </select>
-                        <button type="submit" className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all">
+                        <button
+                            type="submit"
+                            style={{ backgroundColor: brandSettings.primaryColor }}
+                            className="px-8 py-4 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
+                        >
                             Apply
                         </button>
                     </div>
@@ -133,48 +129,29 @@ export default async function InstancesPage({
             </header>
 
             {view === 'schedule' ? (
-                <div className="space-y-16 pb-20">
-                    <section className="space-y-8">
-                        <div className="flex items-center gap-6">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-300 whitespace-nowrap">Active Operations</h2>
-                            <div className="h-px w-full bg-slate-100"></div>
-                        </div>
-                        {upcoming.length > 0 ? (
-                            <div className="grid gap-6">
-                                {upcoming.map((ins) => <InstanceCard key={ins._id.toString()} instance={ins} historic={false} />)}
-                            </div>
-                        ) : (
-                            <div className="p-20 text-center bg-slate-50 rounded-[3.5rem] border-4 border-dashed border-slate-100 font-black text-slate-300 text-sm uppercase tracking-widest">
-                                No active records found
-                            </div>
-                        )}
-                    </section>
-
+                <div className="space-y-12 pb-20">
+                    <div className="grid gap-6">
+                        {upcoming.map((ins: any) => <InstanceCard key={ins._id} instance={ins} historic={false} brandColor={brandSettings.primaryColor} />)}
+                    </div>
                     {historic.length > 0 && (
-                        <details className="group">
-                            <summary className="list-none cursor-pointer outline-none">
-                                <div className="flex items-center gap-6 opacity-40 hover:opacity-100 transition-opacity">
-                                    <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-300 whitespace-nowrap">Historical Archive ({historic.length})</h2>
-                                    <div className="h-px w-full bg-slate-100"></div>
-                                    <span className="text-slate-300 font-black group-open:rotate-180 transition-transform">↓</span>
-                                </div>
+                        <details className="opacity-50 group">
+                            <summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2 outline-none">
+                                Historical Archive ({historic.length})
+                                <span className="h-px flex-1 bg-slate-100"></span>
                             </summary>
-                            <div className="grid gap-4 pt-10 opacity-50 grayscale">
-                                {historic.map((ins) => <InstanceCard key={ins._id.toString()} instance={ins} historic={true} />)}
-                            </div>
+                            <div className="grid gap-6 pt-4">{historic.map((ins: any) => <InstanceCard key={ins._id} instance={ins} historic={true} brandColor={brandSettings.primaryColor} />)}</div>
                         </details>
                     )}
                 </div>
             ) : (
-                /* Calendar UI ... remains as provided in previous high-quality block */
                 <div className="space-y-8 pb-20">
                     <div className="flex items-center justify-between bg-white px-8 py-6 rounded-[2.5rem] border shadow-sm">
                         <h2 className="text-3xl font-black tracking-tighter text-slate-900">
                             {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </h2>
                         <div className="flex gap-3">
-                            <Link href={`?view=calendar&month=${prevMonth}&year=${prevYear}&q=${q}&status=${status}`} className="p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 border transition-colors shadow-sm">←</Link>
-                            <Link href={`?view=calendar&month=${nextMonth}&year=${nextYear}&q=${q}&status=${status}`} className="p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 border transition-colors shadow-sm">→</Link>
+                            <Link href={`?view=calendar&month=${prevMonth}&year=${prevYear}&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className="p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 border transition-colors shadow-sm">←</Link>
+                            <Link href={`?view=calendar&month=${nextMonth}&year=${nextYear}&q=${q}&status=${status}&courseId=${courseId}&trainerId=${trainerId}`} className="p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 border transition-colors shadow-sm">→</Link>
                         </div>
                     </div>
                     <div className="bg-white border-2 border-slate-50 rounded-[3.5rem] p-10 shadow-2xl shadow-slate-100 grid grid-cols-7 gap-4">
@@ -191,19 +168,23 @@ export default async function InstancesPage({
                             return (
                                 <div key={day} className="min-h-[140px] border border-slate-50 rounded-[2rem] p-3 space-y-2 bg-slate-50/30 hover:bg-white transition-all">
                                     <span className="text-xs font-black text-slate-200">{day}</span>
-                                    {dayInstances.map((ins: any) => (
-                                        <Link key={ins._id} href={`/dashboard/instances/${ins._id}/roster`} className={cn(
-                                            "group relative block p-2 rounded-xl text-[9px] font-black truncate shadow-sm border",
-                                            isHistoric(ins.endDate) ? "bg-white text-slate-300 border-slate-100" :
-                                                ins.deliveryType === 'virtual' ? "bg-indigo-600 text-white border-indigo-700" : "bg-orange-500 text-white border-orange-600"
-                                        )}>
-                                            {ins.courseId?.title}
-                                            <div className="absolute hidden group-hover:block z-[100] bg-slate-900 text-white p-4 rounded-2xl w-48 -left-2 top-full mt-2 shadow-2xl border border-slate-800">
-                                                <p className="text-[9px] opacity-70 mb-1">📍 {ins.location}</p>
-                                                <p className="text-[9px] opacity-70">👤 {ins.trainerIds?.[0]?.name || 'Unassigned'}</p>
-                                            </div>
-                                        </Link>
-                                    ))}
+                                    <div className="space-y-1.5">
+                                        {dayInstances.map((ins: any) => (
+                                            <Link key={ins._id} href={`/dashboard/instances/${ins._id}/roster`} className={cn(
+                                                "group relative block p-2 rounded-xl text-[9px] font-black truncate shadow-sm border transition-transform hover:-translate-y-0.5",
+                                                isHistoric(new Date(ins.endDate)) ? "bg-white text-slate-300 border-slate-100 opacity-60" :
+                                                    ins.deliveryType === 'virtual' ? "bg-indigo-600 text-white border-indigo-700" : "bg-orange-500 text-white border-orange-600"
+                                            )}>
+                                                {ins.courseId?.title}
+                                                <div className="absolute hidden group-hover:block z-[100] bg-slate-900 text-white p-4 rounded-2xl w-48 -left-2 top-full mt-2 shadow-2xl border border-slate-800 pointer-events-none">
+                                                    <p className="text-[10px] text-indigo-400 uppercase tracking-widest mb-1 font-black">Details</p>
+                                                    <p className="text-xs font-black leading-tight mb-2">{ins.courseId?.title}</p>
+                                                    <p className="text-[9px] opacity-70 mb-1">📍 {ins.location}</p>
+                                                    <p className="text-[9px] opacity-70">👤 {ins.trainerIds?.[0]?.name || 'Unassigned'}</p>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -214,18 +195,25 @@ export default async function InstancesPage({
     );
 }
 
-function InstanceCard({ instance, historic }: { instance: any, historic: boolean }) {
+function InstanceCard({ instance, historic, brandColor }: { instance: any, historic: boolean, brandColor: string }) {
     return (
-        <div className={cn(
-            "group bg-white border p-8 rounded-[3rem] shadow-sm flex flex-col md:flex-row items-center gap-10 transition-all",
-            historic ? "py-6" : "hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-50"
-        )}>
+        <div className={cn("group bg-white border p-8 rounded-[3rem] shadow-sm flex flex-col md:flex-row items-center gap-10 transition-all", historic ? "grayscale py-6" : "hover:shadow-2xl hover:shadow-indigo-50")}>
             <div className={cn(
                 "flex flex-col items-center justify-center border-2 rounded-[2.5rem] h-28 w-28 shrink-0 transition-all",
-                historic ? "bg-slate-50 border-slate-100 text-slate-300" : "bg-slate-50 border-slate-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-105 group-hover:border-indigo-600 shadow-sm"
-            )}>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{new Date(instance.startDate).toLocaleString('default', { month: 'short' })}</span>
-                <span className="text-4xl font-black tracking-tighter">{new Date(instance.startDate).getDate()}</span>
+                historic ? "bg-slate-50 border-slate-100 text-slate-300" : "bg-slate-50 border-slate-100 group-hover:text-white group-hover:scale-105 shadow-sm"
+            )}
+                 style={!historic ? { backgroundColor: 'white', borderColor: '#f1f5f9' } : {}}
+            >
+                <div className="group-hover:hidden flex flex-col items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{new Date(instance.startDate).toLocaleString('default', { month: 'short' })}</span>
+                    <span className="text-4xl font-black tracking-tighter">{new Date(instance.startDate).getDate()}</span>
+                </div>
+                <div
+                    className="hidden group-hover:flex h-full w-full items-center justify-center rounded-[2.3rem]"
+                    style={{ backgroundColor: brandColor }}
+                >
+                    <span className="text-white font-black text-xl">VIEW</span>
+                </div>
             </div>
             <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-3">
@@ -241,8 +229,14 @@ function InstanceCard({ instance, historic }: { instance: any, historic: boolean
                 </div>
             </div>
             <div className="flex flex-col gap-3 min-w-[180px] w-full md:w-auto">
-                <Link href={`/dashboard/instances/${instance._id}/roster`} className="px-8 py-3.5 bg-slate-900 text-white text-[11px] font-black rounded-2xl text-center hover:bg-black transition-all shadow-lg">Manage Roster</Link>
-                {!historic && <AutoQuoteButton instanceId={instance._id.toString()} />}
+                <Link
+                    href={`/dashboard/instances/${instance._id}/roster`}
+                    style={{ backgroundColor: brandColor }}
+                    className="px-8 py-3.5 text-white text-[11px] font-black rounded-2xl text-center shadow-lg hover:opacity-90"
+                >
+                    Manage Roster
+                </Link>
+                {!historic && <AutoQuoteButton instanceId={instance._id} />}
                 <DeleteButton endpoint={`/api/course-instances/${instance._id}`} />
             </div>
         </div>

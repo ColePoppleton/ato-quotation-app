@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import Course from '@/models/Course';
+import { revalidatePath } from 'next/cache';
 
 export async function GET(request, { params }) {
     await dbConnect();
@@ -19,12 +20,14 @@ export async function PATCH(request, { params }) {
         const { id } = await params;
         const body = await request.json();
 
-        // Find and update the course with the full body
         const updatedCourse = await Course.findByIdAndUpdate(id, body, { new: true });
 
         if (!updatedCourse) {
             return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
+
+        // CRITICAL: Clear the cache so the catalog page shows new data
+        revalidatePath('/dashboard/courses');
 
         return NextResponse.json({ success: true, data: updatedCourse });
     } catch (error) {
@@ -37,6 +40,9 @@ export async function DELETE(request, { params }) {
     try {
         const { id } = await params;
         await Course.findByIdAndDelete(id);
+
+        revalidatePath('/dashboard/courses');
+
         return NextResponse.json({ success: true });
     } catch (error) {
         return NextResponse.json({ error: "Delete failed" }, { status: 500 });

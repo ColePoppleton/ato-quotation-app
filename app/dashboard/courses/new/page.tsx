@@ -25,7 +25,9 @@ export default function NewCoursePage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    title, examBody, requiresExam,
+                    title,
+                    examBody,
+                    requiresExam,
                     costPerEnrollment: Number(costPerEnrollment),
                     materialsCost: Number(materialsCost),
                     take2Cost: Number(take2Cost),

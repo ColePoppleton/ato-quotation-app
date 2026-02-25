@@ -6,6 +6,9 @@ import Course from "@/models/Course";
 import DeleteButton from "@/components/DeleteButton";
 import { cn } from "@/lib/utils";
 
+// FORCE: Tell Next.js to always fetch fresh data for this page
+export const dynamic = 'force-dynamic';
+
 export default async function CoursesPage({
                                               searchParams
                                           }: {
@@ -25,7 +28,9 @@ export default async function CoursesPage({
     if (examFilter === 'mandatory') filter.requiresExam = true;
     if (examFilter === 'optional') filter.requiresExam = false;
 
-    const courses = await Course.find(filter).sort({ title: 1 }).lean();
+    // Fetch and explicitly serialize to plain objects
+    const rawCourses = await Course.find(filter).sort({ title: 1 }).lean();
+    const courses = JSON.parse(JSON.stringify(rawCourses));
 
     return (
         <div className="max-w-7xl mx-auto space-y-12 py-10 px-6">
@@ -72,7 +77,7 @@ export default async function CoursesPage({
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {courses.map((course: any) => (
-                    <div key={course._id.toString()} className="bg-white border-2 border-slate-50 p-8 rounded-[3rem] shadow-sm hover:shadow-2xl hover:shadow-indigo-50/50 transition-all flex flex-col justify-between group">
+                    <div key={course._id} className="bg-white border-2 border-slate-50 p-8 rounded-[3rem] shadow-sm hover:shadow-2xl hover:shadow-indigo-50/50 transition-all flex flex-col justify-between group">
                         <div className="space-y-6">
                             <div className="flex justify-between items-start">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-slate-900 text-white px-4 py-1.5 rounded-full">
@@ -93,11 +98,15 @@ export default async function CoursesPage({
                             <div className="grid grid-cols-2 gap-4 pt-4">
                                 <div className="bg-slate-50 p-4 rounded-2xl">
                                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Tuition Fee</p>
-                                    <p className="text-xl font-black text-slate-900 tracking-tighter">£{course.costPerEnrollment || 0}</p>
+                                    <p className="text-xl font-black text-slate-900 tracking-tighter">
+                                        £{course.costPerEnrollment || 0}
+                                    </p>
                                 </div>
                                 <div className="bg-slate-50 p-4 rounded-2xl">
                                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Max Cap</p>
-                                    <p className="text-xl font-black text-slate-900 tracking-tighter">{course.maxEnrollments || 12} <span className="text-[10px] opacity-30">PA</span></p>
+                                    <p className="text-xl font-black text-slate-900 tracking-tighter">
+                                        {course.maxEnrollments || 12} <span className="text-[10px] opacity-30">PA</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
