@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 
-// Update interface to include optional 'disabled' boolean
 export default function StatusDropdown({
                                            quoteId,
                                            initialStatus,
@@ -22,7 +21,7 @@ export default function StatusDropdown({
                 body: JSON.stringify({ status: newStatus })
             });
             if (res.ok) {
-                router.refresh(); // Refreshes the server data to keep charts in sync
+                router.refresh();
             }
         } catch (error) {
             console.error("Update failed", error);
@@ -33,7 +32,7 @@ export default function StatusDropdown({
         <select
             defaultValue={initialStatus}
             onChange={(e) => handleChange(e.target.value)}
-            disabled={disabled} // Apply the disabled state here
+            disabled={disabled}
             className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-1 font-bold uppercase cursor-pointer hover:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
             <option value="draft">Draft</option>
