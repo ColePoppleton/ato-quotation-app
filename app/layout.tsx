@@ -1,32 +1,31 @@
 import type { Metadata } from "next";
-import {Geist, Geist_Mono, Inter} from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { dbConnect } from "@/lib/mongodb";
 import Settings from "@/models/Settings";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-// DYNAMIC METADATA: Syncs favicon with Settings logo
+// DYNAMIC METADATA: This function runs on the server to fetch your brand logo
 export async function generateMetadata(): Promise<Metadata> {
-    await dbConnect();
+    await dbConnect(); //
+
+    // Fetch the settings from your database
     const settings = await Settings.findOne({}).lean() || {};
-    const companyName = settings.companyName || "ATO Engine";
-    const logoUrl = settings.logoUrl || "/favicon.ico";
+
+    const companyName = (settings as any).companyName || "ATO Engine";
+    const logoUrl = (settings as any).logoUrl || "/favicon.ico"; // Fallback to local favicon
 
     return {
         title: companyName,
         description: "Enterprise Training Management Portal",
         icons: {
-            icon: logoUrl,
+            icon: logoUrl,    // Sets the browser tab favicon
             shortcut: logoUrl,
             apple: logoUrl,
         },
     };
 }
-
-// app/layout.tsx snippet
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
