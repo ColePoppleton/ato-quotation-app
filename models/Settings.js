@@ -1,11 +1,14 @@
 import mongoose from 'mongoose';
 
-const settingsSchema = new mongoose.Schema({
-    companyName: { type: String, default: 'Your ATO Training Co.' },
-    companyAddress: { type: String, default: '123 Business Park, London, UK' },
+const SettingsSchema = new mongoose.Schema({
+    companyName: { type: String, default: 'ATO Engine' },
     primaryColor: { type: String, default: '#2563EB' },
     logoUrl: { type: String, default: '' },
-    mileageRate: { type: Number, default: 0.45 }
+    mileageRate: { type: Number, default: 0.45 },
+    // NEW FIELDS
+    vatRate: { type: Number, default: 20 },
+    defaultMaxEnrollments: { type: Number, default: 12 },
+    defaultExamBody: { type: String, default: 'PeopleCert' }
 }, { timestamps: true });
 
-export default mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
+export default mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);

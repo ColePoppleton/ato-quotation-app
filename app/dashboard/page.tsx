@@ -2,13 +2,13 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { MagicCard } from "@/components/ui/magic-card";
 import { NumberTicker } from "@/components/ui/number-ticker";
-import Link from "next/link";
 import { dbConnect } from "@/lib/mongodb";
 import Quote from "@/models/Quote";
 import Delegate from "@/models/Delegate";
 import CourseInstance from "@/models/CourseInstance";
+import Settings from "@/models/Settings";
 import RevenueChart from "@/components/RevenueChart";
-import {cn} from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
     const session = await auth();
@@ -16,29 +16,25 @@ export default async function DashboardPage() {
 
     await dbConnect();
 
-    const currentYear = new Date().getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1);
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const [
-        pendingQuotesCount,
-        delegatesYTDCount,
-        activeInstancesCount,
-        recentQuotes,
-        chartQuotes
-    ] = await Promise.all([
+    // Parallel data fetching for high performance
+    const [brandSettings, pendingCount, delegatesCount, activeCount, recentQuotes, chartQuotes] = await Promise.all([
+        Settings.findOne({}).lean() || { primaryColor: '#2563EB' },
         Quote.countDocuments({ status: { $in: ['draft', 'pending_approval'] } }),
-        Delegate.countDocuments({ createdAt: { $gte: startOfYear } }),
+        Delegate.countDocuments({ createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } }),
         CourseInstance.countDocuments({ endDate: { $gte: new Date() } }),
         Quote.find({}).sort({ createdAt: -1 }).limit(5).populate('organisationId', 'name').lean(),
-        Quote.find({ createdAt: { $gte: sixMonthsAgo }, status: { $ne: 'draft' } }).lean()
+        Quote.find({
+            createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) },
+            status: { $ne: 'draft' }
+        }).lean()
     ]);
 
-    // Data Aggregation for Recharts
-    const monthlyTotals = chartQuotes.reduce((acc: any, quote: any) => {
-        const month = new Date(quote.createdAt).toLocaleString('default', { month: 'short' });
-        acc[month] = (acc[month] || 0) + (quote.financials?.totalPrice || 0);
+    const brandColor = (brandSettings as any).primaryColor || '#2563EB';
+
+    // Aggregate monthly totals for the Revenue Chart
+    const monthlyTotals = chartQuotes.reduce((acc: any, q: any) => {
+        const month = new Date(q.createdAt).toLocaleString('default', { month: 'short' });
+        acc[month] = (acc[month] || 0) + (q.financials?.totalPrice || 0);
         return acc;
     }, {});
 
@@ -51,38 +47,52 @@ export default async function DashboardPage() {
     });
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
-                    <p className="text-slate-500 font-medium">Here is what's happening with your courses today.</p>
-                </div>
+        <div className="max-w-7xl mx-auto space-y-10 font-sans">
+            <header className="space-y-1">
+                <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">Home</h1>
+                <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1">Live Metrics</p>
             </header>
 
+            {/* Top Level KPIs using MagicCard and Brand Colors */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatsCard label="Pending Quotes" value={pendingQuotesCount} color="text-blue-600" />
-                <StatsCard label="Delegates YTD" value={delegatesYTDCount} color="text-emerald-600" />
-                <StatsCard label="Active Instances" value={activeInstancesCount} color="text-violet-600" />
+                <MagicStatsCard label="Pipeline Quotes" value={pendingCount} color={brandColor} />
+                <MagicStatsCard label="Learners YTD" value={delegatesCount} color={brandColor} />
+                <MagicStatsCard label="Active Schedules" value={activeCount} color={brandColor} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-lg font-bold text-slate-900">Revenue Pipeline</h3>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Last 6 Months</span>
+                {/* Revenue Momentum Chart */}
+                <div className="lg:col-span-2 bg-white border-2 border-slate-50 rounded-[3rem] p-10 shadow-2xl shadow-slate-100/50 transition-all">
+                    <div className="flex items-center justify-between mb-10">
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Revenue Pipeline</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rolling 6-Month Performance</p>
+                        </div>
                     </div>
-                    <RevenueChart data={chartData} />
+                    <div className="h-[300px]">
+                        <RevenueChart data={chartData} />
+                    </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Quotes</h3>
-                    <div className="space-y-5">
+                {/* Recent Activity Feed */}
+                <div className="bg-white border-2 border-slate-50 rounded-[3rem] p-10 shadow-sm flex flex-col">
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-8">Recent Flow</h3>
+                    <div className="space-y-6 flex-1">
                         {recentQuotes.map((quote: any) => (
-                            <div key={quote._id} className="flex flex-col border-b border-slate-50 pb-4 last:border-0">
-                                <span className="text-sm font-bold text-slate-900">{quote.organisationId?.name}</span>
-                                <div className="flex justify-between items-center mt-1">
-                                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{quote.status}</span>
-                                    <span className="text-xs font-medium text-slate-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                            <div key={quote._id.toString()} className="group flex flex-col border-b border-slate-50 pb-6 last:border-0 hover:bg-slate-50/50 transition-colors p-2 rounded-2xl">
+                                <span className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                    {quote.organisationId?.name}
+                                </span>
+                                <div className="flex justify-between items-center mt-2">
+                                    <span
+                                        style={{ borderLeft: `3px solid ${brandColor}` }}
+                                        className="text-[8px] font-black uppercase text-slate-400 tracking-widest pl-2"
+                                    >
+                                        {quote.status}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-300">
+                                        {new Date(quote.createdAt).toLocaleDateString()}
+                                    </span>
                                 </div>
                             </div>
                         ))}
@@ -93,13 +103,18 @@ export default async function DashboardPage() {
     );
 }
 
-function StatsCard({ label, value, color }: { label: string, value: number, color: string }) {
+function MagicStatsCard({ label, value, color }: { label: string, value: number, color: string }) {
     return (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
-            <div className={cn("text-4xl font-bold tracking-tight", color)}>
+        <MagicCard
+            gradientColor={`${color}10`}
+            className="p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm flex flex-col items-center text-center group hover:scale-[1.02] transition-transform"
+        >
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 group-hover:text-slate-600 transition-colors">
+                {label}
+            </p>
+            <div className="text-6xl font-black tracking-tighter" style={{ color: color }}>
                 <NumberTicker value={value} />
             </div>
-        </div>
+        </MagicCard>
     );
 }
