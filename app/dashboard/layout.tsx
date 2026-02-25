@@ -74,7 +74,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     );
 }
 
-function NavLink({ href, label, highlight = false }: { href: string, label: string, highlight?: boolean }) {
+// Updated NavLink with icon support and correct types
+function NavLink({ href, label, icon, highlight = false }: { href: string, label: string, icon?: string, highlight?: boolean }) {
     return (
         <Link
             href={href}
@@ -85,7 +86,12 @@ function NavLink({ href, label, highlight = false }: { href: string, label: stri
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
         >
-            {label}
+            {icon && (
+                <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
+                </svg>
+            )}
+            <span className="truncate">{label}</span>
         </Link>
     );
 }
