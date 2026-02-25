@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import Quote from '@/models/Quote';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     try {
+        // ✅ Await params to unwrap the id
+        const { id } = await params;
         const { status } = await request.json();
         const updatedQuote = await Quote.findByIdAndUpdate(
-            params.id,
+            id,
             { status },
             { new: true }
         );
