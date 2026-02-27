@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-10 font-sans">
             <header className="space-y-1">
-                <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">Home</h1>
+                <h1 className="text-7xl font-black tracking-tighter text-slate-900 leading-none uppercase">Home</h1>
                 <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1">Live Metrics</p>
             </header>
 
